@@ -12,8 +12,7 @@ public class MyModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(MyHttpServer.class);
-        bind(ExceptionFilter.class);
+
         bind(Arguments.class).toInstance(arguments);
     }
 }

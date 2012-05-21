@@ -7,6 +7,11 @@ import javax.inject.Inject;
 import org.jboss.netty.handler.codec.http.HttpRequest;
 import org.jboss.netty.handler.codec.http.HttpResponse;
 
+import se.atoulou.www.filters.ExceptionFilter;
+import se.atoulou.www.filters.RequestLoggingFilter;
+import se.atoulou.www.services.MyHttpService;
+import se.atoulou.www.services.RoutingHttpService;
+
 import com.beust.jcommander.JCommander;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -25,23 +30,30 @@ public class Main {
     }
 
     private final Arguments arguments;
-    private final MyHttpServer httpServer;
+    private final Service<HttpRequest, HttpResponse> rootService;
     private final ExceptionFilter exceptionFilter;
+    private final RequestLoggingFilter logFilter;
 
     @Inject
-    public Main(Arguments arguments, MyHttpServer httpServer, ExceptionFilter exceptionFilter) {
+    public Main(Arguments arguments) {
         this.arguments = arguments;
-        this.httpServer = httpServer;
-        this.exceptionFilter = exceptionFilter;
+        this.rootService = new RoutingHttpService() {
+            {
+                from("/").to(new MyHttpService());
+                from("/blah").to(new MyHttpService());
+            }
+        };
+        this.exceptionFilter = new ExceptionFilter();
+        this.logFilter = new RequestLoggingFilter();
 
     }
 
     public void run() {
-        Service<HttpRequest, HttpResponse> service = exceptionFilter.andThen(httpServer);
+        Service<HttpRequest, HttpResponse> service = logFilter.andThen(exceptionFilter).andThen(rootService);
 
         ServerBuilder.safeBuild(
                 service,
-                ServerBuilder.get().codec(Http.get()).name("MyHttpServer")
+                ServerBuilder.get().codec(Http.get()).name("atoulou.se")
                         .bindTo(new InetSocketAddress("localhost", arguments.getPort())));
     }
 
